@@ -1,0 +1,1557 @@
+import sys, pygame
+from pygame.locals import* 
+import random
+import copy
+import os
+
+#This is my main function that runs my code. 
+#It starts by setting up my UI and then runs the game
+
+def main():
+    class Struct: pass
+    pygame.init()
+    size = width,height = 624,436
+    screen = pygame.display.set_mode(size)
+    game = Struct()
+    game.screen = screen
+    loadMerengue(game)
+    startUp(game)
+    pygame.mixer.music.play(-1,0.0)
+    startMenu(game)
+    enterPlayers(game)
+    game.backgroundColor = (116,141,169)
+    game.screen.fill(game.backgroundColor)
+    pygame.mixer.music.fadeout(3000)
+    drawBackGround(game)
+    init(game)
+    drawHand(game,game.currentPlayer)
+    drawPlayer(game,game.currentPlayer)
+    pygame.display.update()
+    loadBachata(game)
+    pygame.mixer.music.play(-1,0.0)
+    while True:
+        runGame(game)
+
+#This loads my background music
+#Bachata Music or Dominican R&B
+
+
+def loadBachata(game):
+    pygame.mixer.music.load(os.path.join("sounds","background.mp3"))
+
+def loadMerengue(game):
+    pygame.mixer.music.load(os.path.join("sounds","StartMenu.mp3"))
+
+#Calls my startUp screen. This runs through a bunch of pictures in 
+#my startMenu folder in order to create the animation effect. 
+
+def startUp(game):
+    for x in xrange(1,13):
+        if(x == 3):
+            pass
+        else:
+            image = "start" + str(x) +".png"
+            path = os.path.join("startMenu",image) 
+            background = pygame.image.load(path)
+            game.screen.blit(background,(0,0))
+            pygame.display.update()
+            if(x ==7):
+                pygame.time.wait(2000)
+            if(x == 12):
+                pygame.time.wait(1000)
+            pygame.time.wait(250)
+
+#Creates my startMenu. In order to create the hover effect on my buttons
+#I found the mouse position of the cursor and changed the image of the button
+#when the cursor was within the confines of the button
+
+def startMenu(game):
+    orgPath = os.path.join("startMenu","startScreen.png")
+    background = pygame.image.load(orgPath)
+    game.screen.blit(background,(0,0))
+    pygame.display.update()
+    stillOnStartScreen = True
+    while(stillOnStartScreen):
+        pygame.display.update()
+        x,y = pygame.mouse.get_pos()
+        if(x>237 and x < 394 and y>310 and y<351):
+            path = os.path.join("startMenu","startScreeninvert.png")
+            background = pygame.image.load(path)
+            game.screen.blit(background,(0,0))
+        else:
+            background = pygame.image.load(orgPath)
+            game.screen.blit(background,(0,0))
+        for event in pygame.event.get():
+            if event.type == QUIT:
+                exit()
+            if event.type == MOUSEBUTTONDOWN:
+                if(x>237 and x < 394 and y>310 and y<351):
+                    stillOnStartScreen = False
+
+#Creates my enter players screen. Here I have a hover effect
+#going for two different sections of the screen. 
+
+def enterPlayers(game):
+    orgPath = os.path.join("enterPlayerScreen","difficultyAndPlayers.png")
+    background = pygame.image.load(orgPath)
+    game.screen.blit(background,(0,0))
+    game.stillOnScreen = True
+    game.numberOfPlayers = None
+    game.difficultyLevel = None
+    setUpButtons(game)
+    while(game.stillOnScreen):
+        pygame.display.update()
+        x,y = pygame.mouse.get_pos()
+        colorButton(game,background,x,y)
+        for event in pygame.event.get():
+            if event.type == QUIT:
+                exit()
+            if event.type == MOUSEBUTTONDOWN:
+                    playButton(game,x,y)
+                    checkStatus(game)
+
+#Creates the buttons on the screen
+
+def setUpButtons(game):
+    game.player1Button = pygame.Rect(101,144,173,211)
+    game.player2Button = pygame.Rect(207,143,281,212)
+    game.player3Button = pygame.Rect(324,142,398,208)
+    game.player4Button = pygame.Rect(436,141,511,208)
+    game.easyButton = pygame.Rect(100,320,279,370)
+    game.hardButton = pygame.Rect(340,324,519,371)
+    game.buttons = [game.player1Button,game.player2Button,game.player3Button,
+                    game.player4Button,game.easyButton,game.hardButton]
+
+#This function is responsible for the hover effect.
+
+def colorButton(game,background,x,y):
+    if(game.numberOfPlayers == None):
+        if(x>=101 and x<=173 and y >=144 and y<=211):
+            updateButton(game,1)
+        elif(x>=207 and x<=281 and y>=143 and y<=212):
+            updateButton(game,2)
+        elif(x>=324 and x<=398 and y>=142 and y<=208):
+            updateButton(game,3)
+        elif(x>=436 and x<=511 and y>=141 and y<=208):
+            updateButton(game,4)
+        else:
+            game.screen.blit(background,(100,140,520,210),(100,140,520,210))
+    if(game.difficultyLevel == None):
+        if(x>=100 and x<=279 and y>=320 and y<=370):
+            updateButton(game,"Easy")
+        elif(x>=340 and x<=519 and y>=324 and y<=371):
+            updateButton(game,"Hard")
+        else:
+            game.screen.blit(background,(100,300,530,380),(100,300,530,380))
+
+#A helper function that gets the image for the above function
+
+def updateButton(game,x):
+    if(type(x) == int):
+        screen = "difficultyandPlayers"+ str(x) + ".png"
+        path = os.path.join("enterPlayerScreen",screen)
+        image = pygame.image.load(path)
+        button = game.buttons[x-1]
+        game.screen.blit(image,button,button)
+    else:
+        screen = "difficultyandPlayers" + x + ".png"
+        path = os.path.join("enterPlayerScreen",screen)
+        image = pygame.image.load(path)
+        if(x=="Easy"):
+            button = game.buttons[4]
+        else:
+            button = game.buttons[5]
+        game.screen.blit(image,button,button)
+
+#This controls the actions that occur when the buttons are pressed
+
+def playButton(game,x,y):
+    if(game.numberOfPlayers == None or game.difficultyLevel == None):
+       pickNumber(game,x,y)
+       pickDifficulty(game,x,y)
+
+#Assigns the number the user picked to the game state. Also
+#stops the hover effect
+      
+def pickNumber(game,x,y):
+    if(x>=101 and x<=173 and y >=144 and y<=211):
+        game.numberOfPlayers = 1 
+        updateButton(game,1)
+    elif(x>=207 and x<=281 and y>=143 and y<=212):
+        game.numberOfPlayers = 2
+        updateButton(game,2)
+    elif(x>=324 and x<=398 and y>=142 and y<=208):
+        game.numberOfPlayers = 3 
+        updateButton(game,3)
+    elif(x>=436 and x<=511 and y>=141 and y<=208):
+        game.numberOfPlayers = 4
+        updateButton(game,4)
+
+#Assigns the difficulty the user picked to the game state. Stops
+#the hover effect for the difficulty buttons
+
+def pickDifficulty(game,x,y):
+    if(x>=100 and x<=279 and y>=320 and y<=370):
+        game.difficultyLevel = "Easy"
+        updateButton(game,"Easy")
+    elif(x>=340 and x<=519 and y>=324 and y<=371):
+        game.difficultyLevel = "Hard"
+        updateButton(game,"Hard")
+
+#Checks to see if the user has picked the neccesary componets to start
+#the game
+
+def checkStatus(game):
+    if(game.difficultyLevel!=None and game.numberOfPlayers != None):
+        setUpPlayers(game)
+        while True:
+            event = pygame.event.wait()
+            if event.type == MOUSEBUTTONDOWN:
+                game.stillOnScreen = False
+                break
+
+#Assigns the data gathers from the user to the game.
+
+def setUpPlayers(game):
+    game.humans = game.numberOfPlayers
+    if(game.difficultyLevel == "Easy"):
+        game.easyAI = 4 - game.numberOfPlayers
+        game.normalAI = 0
+    else:
+        game.normalAI = 4 - game.numberOfPlayers
+        game.easyAI = 0
+
+#This is my game's main init. While variables are created in other places
+#the majority of the variables that are used in this game are below
+
+def init(game):
+    game.test = False
+    game.totalKeys = makeKeys()
+    game.dominoesDealt = random.sample(game.totalKeys,len(game.totalKeys))
+    game.players = []
+    makePlayers(game)
+    game.firstPlayer = findFirstPlayer(game)
+    game.firstToPlay = game.players[game.firstPlayer]
+    game.board = dict()
+    game.isGameOver = False
+    game.oddMoves = 0
+    game.evenMoves = 0
+    game.currentPlayerI = game.firstPlayer
+    game.currentPlayer = game.firstToPlay
+    game.zeroes,game.ones,game.twos = set(),set(),set()
+    game.threes,game.fours,game.fives,game.sixes = set(),set(),set(),set()
+    game.allNumbers = [game.zeroes,game.ones,game.twos,game.threes,
+                       game.fours,game.fives,game.sixes]
+    game.animation = False
+    game.isPassed = False
+    game.initalGameOver = True
+
+#Finds the first player by looking for the double six in all the 
+#player's hands
+
+def findFirstPlayer(game):
+    firstPlayer = 0
+    for x in xrange(len(game.players)):
+        player = game.players[x]
+        for y in player.hand:
+            if y == (6,6):
+                firstPlayer = x
+    return firstPlayer
+
+#The below functions make the deck and hand out the dominos. They
+#also create the players in the game. 
+
+def makeKeys():
+    totalKeys = []
+    for x in xrange(0,7):
+        for y in xrange(0,7):
+            if((x,y) not in totalKeys and (y,x) not in totalKeys):
+                totalKeys.append((x,y))
+    return totalKeys
+
+def makePlayers(game):
+    for x in xrange(game.humans):
+        player = makePlayer(game)
+        game.players.append(player)
+    for x in xrange(game.easyAI):
+        player = makeEasyAI(game)
+        game.players.append(player)
+    for x in xrange(game.normalAI):
+        player = makeNormalAI(game)
+        game.players.append(player)
+
+def makePlayer(game):
+    class Struct: pass
+    player = Struct()
+    player.hand = makeHand(game)
+    player.type = "Human"
+    player.passNumbers = set()
+    return player
+
+def makeEasyAI(game):
+    class Struct:pass
+    player = Struct()
+    player.hand = makeHand(game)
+    player.type = "Easy"
+    player.passNumbers = set()
+    return player
+
+def makeNormalAI(game):
+    class Struct:pass
+    player = Struct()
+    player.hand = makeHand(game)
+    player.type = "Normal"
+    player.passNumbers = set()
+    return player
+
+def makeHand(game):
+    hand = []
+    for index in xrange(0,7):
+        domino = game.dominoesDealt[0] 
+        hand.append(domino)
+        game.dominoesDealt.pop(0)
+    return hand
+
+#This function controls the flow of the game. It has a different function
+#for a game over scenario, a not legal hand scenario and also runs the AI
+
+def runGame(game):
+    pygame.display.update()
+    if(game.isGameOver):
+        gameOver(game)
+    elif(game.currentPlayer.type == "Normal"):
+        if(notLegalHand(game)):
+            passPlayer(game,game.currentPlayerI)
+        else:
+            pygame.time.wait(1500)
+            dominoNum = pickMoveNormal(game)
+            makeMove(game,dominoNum,game.currentPlayerI)
+            pygame.display.update()
+    elif(game.currentPlayer.type == "Easy"):
+        if(notLegalHand(game)):
+            passPlayer(game,game.currentPlayerI)
+        else:
+            pygame.time.wait(1500)
+            dominoNum = pickMoveEasy(game)
+            makeMove(game,dominoNum,game.currentPlayerI)
+    else:
+        eventLoop(game)
+
+#Main gameOver function that initates the gameOver sequence
+    
+def gameOver(game):
+    if(game.initalGameOver == True):
+        firstGameOverScreen(game)
+    else:
+        secondGameOverScreen(game)
+       
+def firstGameOverScreen(game):
+    drawAllRemainingHands(game)
+    winner = game.winner
+    font = pygame.font.SysFont("helvetica",50)
+    text = "Winner is Player "+str(winner+1)
+    rText = font.render(text,True,pygame.Color("black"))
+    game.screen.blit(rText,(650/2-200,425/2-100))
+    for event in pygame.event.get():
+        if(event.type == QUIT):
+            pygame.quit()
+            sys.exit(0)
+        if(event.type == MOUSEBUTTONDOWN):
+            game.initalGameOver = False
+
+def drawAllRemainingHands(game):
+    previousPlayer = game.players[(game.winner)%4]
+    drawInitalHand(game,previousPlayer)
+
+def secondGameOverScreen(game):
+    pygame.mixer.music.fadeout(4000)
+    path = os.path.join("GameOver","gameOverScreen.png")
+    image = pygame.image.load(path)
+    game.screen.fill(game.backgroundColor)
+    game.screen.blit(image,(0,0))
+    font = pygame.font.SysFont("helvetica",50)
+    text = str(game.winner+1)
+    rText = font.render(text,True,pygame.Color("white"))
+    game.screen.blit(rText,(402,210))
+    game.playAgain = pygame.Rect(219,300,415,337)
+    game.quitButton = pygame.Rect(254,365,352,405)
+    x,y = pygame.mouse.get_pos()
+    gameOverColorButton(game,x,y)
+    for event in pygame.event.get():
+        if(event.type == QUIT):
+            pygame.quit()
+            sys.exit()
+        if(event.type == MOUSEBUTTONDOWN):
+            buttonAction(game,x,y)
+           
+def gameOverColorButton(game,x,y):
+    if(x>=219 and x<=415 and y>=306 and y<=337):
+        path = os.path.join("GameOver","playAgain.png")
+        image = pygame.image.load(path)
+        button = game.playAgain
+        game.screen.blit(image,button,button)
+    if(x>=254 and x<=352 and y>=369 and y<=405):
+        path = os.path.join("GameOver","Quit.png")
+        image = pygame.image.load(path)
+        button = game.quitButton
+        game.screen.blit(image,button,button)
+
+def buttonAction(game,x,y):
+    if(x>=219 and x<=415 and y>=306 and y<=337):
+        restartGame(game)
+    if(x>=254 and x<=352 and y>=369 and y<=405):
+        pygame.quit()
+        sys.exit()
+
+def restartGame(game):
+    game.screen.fill(game.backgroundColor)
+    drawBackGround(game)
+    init(game)
+    drawHand(game,game.currentPlayer)
+    pygame.display.update()
+    pygame.mixer.music.play(-1,0.0)
+    game.isGamOver = False
+
+#This functions checks if a hand is a legal but making sure at least one
+#domino in the player's hand matches the ends of the board
+
+def notLegalHand(game):
+    board = game.board
+    if(len(board) == 0):
+        return False
+    hand = game.currentPlayer.hand
+    if(len(board) == 1):
+        setDomino = board[1]
+        for domino in hand:
+            if(domino[0] == setDomino[0] or domino[1] == setDomino[0]):
+                return False
+        return True
+    else:
+        checkR,checkL = findEnds(game)
+        for domino in hand:
+            if(domino[0] == checkR[1] or domino[1] == checkR[1] or
+               domino[0] == checkL[0] or domino[1] == checkL[0]):
+                return False
+        return True
+
+#Finds the ends of the board by getting the largest odd and even
+#number. 
+
+def findEnds(game):
+    board = game.board
+    keys = board.keys()
+    odds = []
+    evens = []
+    for x in keys:
+        if x % 2 == 0:
+            evens.append(x)
+        else:
+            odds.append(x)
+    if(len(evens) == 0):
+        maxEven = 1
+    else:
+        maxEven = max(evens)
+    maxOdd = max(odds)
+    checkR = board[maxEven]
+    checkL = board[maxOdd]
+    return checkR,checkL
+
+#Passes the player and adds the number that the player passed on to his/her
+#pass numbers list. This list will be used by the AI
+
+def passPlayer(game,currentPlayer):
+    checkR,checkL = findEnds(game)
+    game.currentPlayer.passNumbers.add(checkR[1])
+    game.currentPlayer.passNumbers.add(checkL[0])
+    game.currentPlayerI = (currentPlayer + 1) % 4
+    game.currentPlayer = game.players[game.currentPlayerI]
+    drawHand(game,game.currentPlayer)
+    drawBoard(game)
+    pygame.display.update()
+
+#The next few functions serve as the brain of my AI. My AI works by
+#creating different game states with all the possible moves in its hand
+#and then assigns a score to those states. The highest state 
+#is the move played
+
+def pickMoveNormal(game):
+    possibleMoves = []
+    for domino in game.currentPlayer.hand:
+        if(isLegal(game,domino)):
+            possibleMoves.append(domino)
+    bestScore = -100
+    bestMove = None
+    for domino in possibleMoves:
+        score = findScore(game,domino)
+        if(score > bestScore):
+            bestScore = score
+            bestMove = domino
+        elif(score == bestScore):
+            sumCurrent = sum(bestMove)
+            sumNew= sum(domino)
+            if(sumNew > sumCurrent):
+                bestMove = domino
+    dominoNum = game.currentPlayer.hand.index(bestMove)
+    return dominoNum
+
+#Checks to see if a move is legal. 
+
+def isLegal(game,domino):
+    board = game.board
+    if(len(board) == 0):
+        if(domino == (6,6)):
+            return True
+    elif(len(board) == 1):
+        checkD = board[1]
+        if(domino[0] == checkD[0] or domino[0] == checkD[1] or
+           domino[1] == checkD[0] or domino[1] == checkD[1]):
+            return True
+    else:
+        checkR,checkL = findEnds(game)
+        if(domino[0] == checkR[1] or domino[1] == checkR[1] or
+           domino[0] == checkL[0] or domino[1] == checkL[0]):
+            return True
+        else:
+            return False
+
+#Assigns the score to the different game states
+
+def findScore(game,domino):
+    game2 = copy.deepcopy(game)
+    game2.test = True
+    dominoNum = game.currentPlayer.hand.index(domino)
+    makeMove(game2,dominoNum,game.currentPlayerI)
+    score = 0
+    score += 10*probabilityPassNext(game2)
+    if(domino[0] == domino[1]):
+        score += 5
+    score += 6*keepMaxOption(game,game2)
+    return score
+
+#This function adds score if in the new game state, the number of
+#numbers in your hand is the same as in the previous game state. This is
+#a common strategy in dominos to keep your hand as versatile as possible.
+
+def keepMaxOption(game,game2):
+    score,scoreBefore,scoreAfter = 0,0,0
+    playableNums = findPlayableNums(game.currentPlayer.hand)
+    newNums = findPlayableNums(game2.players[game2.currentPlayerI-1].hand)
+    movesLeftBefore = 28 - len(game.board.keys())
+    movesLeftAfter = 28 - len(game2.board.keys())
+    weights,weightsAfter = [],[]
+    for x in xrange(len(game.allNumbers)):
+        weight = float((7-len(game.allNumbers[x])))/float(movesLeftBefore)
+        weights.append(weight)
+    for x in xrange(len(game2.allNumbers)):
+        weight = float((7-len(game2.allNumbers[x])))/float(movesLeftAfter)
+        weightsAfter.append(weight)
+    for num in playableNums:
+        scoreBefore += weights[num]
+    for num in newNums:
+        scoreAfter += weightsAfter[num]
+    score += scoreAfter - scoreBefore
+    return score
+
+#Finds the playable numbers in a players hands
+
+def findPlayableNums(hand):
+    numbers = set()
+    for domino in hand:
+        for x in xrange(len(domino)):
+            numbers.add(domino[x])
+    return numbers
+
+#This one accounts for repeats and doubles. 
+
+def findAllPlayableNums(hand):
+    numbers = []
+    for domino in hand:
+        for x in xrange(len(domino)):
+            if(domino[0]!=domino[1]):
+                numbers.append(domino[x])
+        if(domino[0] == domino[1]):
+            numbers.append(domino[0])
+    return numbers
+
+#This is the bread and butter of the AI's brain. It calculates the
+#probability that the new game state will skip the next player
+
+def probabilityPassNext(game2):
+    prob = 0
+    checkR,checkL = findEnds(game2)
+    number1 = checkR[1]
+    number2 = checkL[0]
+    passNumbers = game2.players[game2.currentPlayerI].passNumbers
+    if(number1 in passNumbers or number2 in passNumbers):
+        prob = 1
+    else:
+        allPlayableDominos = []
+        for x in xrange(0,7):
+            domino = (number1,x)
+            domino2 = (number2,x)
+            allPlayableDominos.append(domino)
+            allPlayableDominos.append(domino2)
+        playersThatHaveNumber = []
+        for player in game2.players:
+            if (number1 not in player.passNumbers and
+                number2 not in player.passNumbers):
+                playersThatHaveNumber.append(player)
+        totalLeft = 0
+        for player in playersThatHaveNumber:
+            totalLeft += len(player.hand)
+        prob = 1
+        for domino in allPlayableDominos:
+            if(domino not in game2.board.values() or
+              ((domino[1],domino[0]) not in game2.board.values())): 
+                prob*= 1-float(len(game2.currentPlayer.hand))/float(totalLeft)
+    return prob    
+
+#This is the easy AI. It just plays the first legal move in it's
+#hand
+
+def pickMoveEasy(game):
+    hand = game.currentPlayer.hand
+    if(len(game.board) == 0):
+        dominoNum = game.currentPlayer.hand.index((6,6))
+        return dominoNum
+    else:
+        index = 0
+        while(True):
+            domino = game.currentPlayer.hand[index]
+            if(isLegal(game,domino)):
+                break
+            index += 1    
+        return index
+
+#This function controls the events in the game. Its converts a
+#mouse presed position to an index in the hand of the currentPlayer. 
+
+def eventLoop(game):
+    for event in pygame.event.get():
+            if event.type == QUIT:
+                pygame.quit()
+                sys.exit()
+            elif event.type == MOUSEBUTTONDOWN:
+                if(notLegalHand(game)):
+                    drawPassed(game)
+                    passPlayer(game,game.currentPlayerI)
+                else:
+                    x,y = pygame.mouse.get_pos()
+                    if(len(game.currentPlayer.hand)%2 == 1):
+                        start=(624/2)-12.5-(len(game.currentPlayer.hand)/2)*25 
+                    else:
+                        start = (624/2)-(len(game.currentPlayer.hand)/2)*25
+                    dominoNum = int((x - round(start)) / 25)
+                    if(dominoNum >= 0 and
+                     dominoNum < len(game.currentPlayer.hand) and
+                           y > 352):
+                            makeMove(game,dominoNum,game.currentPlayerI)
+
+#This functions appends the move in the above function to the board.
+#The board is a dictionary where moves made on the right side are even integers
+#and moves made on the left side are odd integers. This will be used to draw
+#the board later.  
+
+def makeMove(game,dominoNum,currentPlayerI):
+    domino = game.currentPlayer.hand[dominoNum]
+    board = game.board
+    if(not isLegal(game,domino)):
+        pass
+    if(isLegal(game,domino)):
+        if(len(board) == 0):
+            makeFirstMove(game,dominoNum,currentPlayerI)
+        elif(len(board) == 1):
+            makeSecondMove(game,dominoNum,currentPlayerI)
+            checkR,checkL = findEnds(game)
+        else:
+            checkR,checkL = findEnds(game)
+            if ((domino[0] == checkR[1] or domino[1] == checkR[1]) and
+                (domino[0] == checkL[0] or domino[1] == checkL[0])):
+                makeEitherMove(game,dominoNum,currentPlayerI)
+            elif(domino[0] == checkR[1]):
+                makeRightMove(game,dominoNum,currentPlayerI)
+            elif(domino[1] == checkR[1]):
+                makeRightMoveR(game,dominoNum,currentPlayerI)
+            elif(domino[0] == checkL[0]):
+                makeLeftMoveR(game,dominoNum,currentPlayerI)
+            elif(domino[1] == checkL[0]):
+                makeLeftMove(game,dominoNum,currentPlayerI)
+            if(game.test == False):
+                pygame.display.update()
+
+#The next few functions change the orientation of the domino according
+#to different conditions that arise in the game.
+
+def makeLegalMove(game,dominoNum,currentPlayerI):
+    checkR,checkL = findEnds(game)
+    if ((domino[0] == checkR[1] or domino[1] == checkR[1]) and
+        (domino[0] == checkL[0] or domino[1] == checkL[0])):
+        makeEitherMove(game,dominoNum,currentPlayerI)
+    elif(domino[0] == checkR[1]):
+        makeRightMove(game,dominoNum,currentPlayerI)
+    elif(domino[1] == checkR[1]):
+        makeRightMoveR(game,dominoNum,currentPlayerI)
+    elif(domino[0] == checkL[0]):
+        makeLeftMoveR(game,dominoNum,currentPlayerI)
+    elif(domino[1] == checkL[0]):
+        makeLeftMove(game,dominoNum,currentPlayerI)
+    if(game.test == False):
+        pygame.display.update()
+
+def makeFirstMove(game,dominoNum,currentPlayer):
+    domino = game.currentPlayer.hand[dominoNum]
+    addToNumberPlayed(game,domino)
+    game.oddMoves += 1 
+    game.board[game.oddMoves] = domino
+    game.players[currentPlayer].hand.remove(domino)
+    game.currentPlayerI = (currentPlayer + 1)%4
+    game.currentPlayer = game.players[game.currentPlayerI]
+    if(game.test == False):
+        drawBoard(game)
+        drawHand(game,game.currentPlayer)
+
+def makeSecondMove(game,dominoNum,currentPlayer):
+    domino = game.currentPlayer.hand[dominoNum]
+    addToNumberPlayed(game,domino)
+    game.evenMoves += 2 
+    game.board[game.evenMoves] = (domino[1],domino[0])
+    game.players[currentPlayer].hand.remove(domino)
+    game.currentPlayerI = (currentPlayer + 1)%4
+    game.currentPlayer = game.players[game.currentPlayerI]
+    if(game.test == False):
+        drawBoard(game)
+        drawHand(game,game.currentPlayer)
+    
+def makeEitherMove(game,dominoNum,currentPlayerI):
+    checkR,checkL = findEnds(game)
+    domino = game.currentPlayer.hand[dominoNum]
+    moveNotMade = True
+    hand = copy.copy(game.currentPlayer.hand)
+    hand.remove(domino)
+    allPossibleNums = findAllPlayableNums(hand)
+    if(game.currentPlayer.type == "Normal"):
+        makeEitherMoveNormal(game,dominoNum,currentPlayerI,checkR,
+                             checkL,domino,allPossibleNums)
+    elif(game.currentPlayer.type == "Easy"):
+        if(domino[0] == checkL[0]):
+                makeLeftMoveR(game,dominoNum,currentPlayerI)
+        elif(domino[1] == checkL[0]):
+                makeLeftMove(game,dominoNum,currentPlayerI)
+    else:
+        makeEitherMoveHuman(game,dominoNum,currentPlayerI,
+                            checkR,checkL,domino,allPossibleNums,moveNotMade)
+
+def makeEitherMoveNormal(game,dominoNum,currentPlayerI,
+                         checkR,checkL,domino,allPossibleNums):
+    numberOne = checkR[1]
+    numberTwo = checkL[0]
+    countOne = allPossibleNums.count(numberOne)
+    countTwo = allPossibleNums.count(numberTwo)
+    if(countOne > countTwo):
+        if(domino[0] == checkL[0]):
+            makeLeftMoveR(game,dominoNum,currentPlayerI)
+        elif(domino[1] == checkL[0]):
+            makeLeftMove(game,dominoNum,currentPlayerI)
+    elif(countTwo > countOne):
+        if(domino[0] == checkR[1]):
+            makeRightMove(game,dominoNum,currentPlayerI)
+        elif(domino[1] == checkR[1]):
+            makeRightMoveR(game,dominoNum,currentPlayerI)
+    elif(countTwo == countOne):
+        if(domino[0] == checkL[0]):
+            makeLeftMoveR(game,dominoNum,currentPlayerI)
+        elif(domino[1] == checkL[0]):
+            makeLeftMove(game,dominoNum,currentPlayerI)
+
+def makeEitherMoveHuman(game,dominoNum,currentPlayerI,
+                         checkR,checkL,domino,allPossibleNums,moveNotMade):
+     while(moveNotMade):
+            for event in pygame.event.get():
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_LEFT:
+                        if(domino[0] == checkL[0]):
+                            makeLeftMoveR(game,dominoNum,currentPlayerI)
+                        elif(domino[1] == checkL[0]):
+                            makeLeftMove(game,dominoNum,currentPlayerI)
+                        moveNotMade = False
+                    elif event.key == pygame.K_RIGHT:
+                        if(domino[0] == checkR[1]):
+                            makeRightMove(game,dominoNum,currentPlayerI)
+                        elif(domino[1] == checkR[1]):
+                            makeRightMoveR(game,dominoNum,currentPlayerI)
+                    moveNotMade = False
+                                 
+def makeRightMove(game,dominoNum,currentPlayer):
+    domino = game.currentPlayer.hand[dominoNum]
+    addToNumberPlayed(game,domino)
+    game.evenMoves += 2
+    game.board[game.evenMoves] = domino
+    game.players[currentPlayer].hand.remove(domino)
+    isGameOver(game,currentPlayer)
+    game.currentPlayerI = (currentPlayer + 1)%4
+    game.currentPlayer = game.players[game.currentPlayerI]
+    if(game.test == False):
+        drawBoard(game)
+        drawHand(game,game.currentPlayer)
+    
+def makeRightMoveR(game,dominoNum,currentPlayer):
+    domino = game.currentPlayer.hand[dominoNum]
+    addToNumberPlayed(game,domino)
+    game.evenMoves += 2
+    game.board[game.evenMoves] = (domino[1],domino[0])
+    game.players[currentPlayer].hand.remove(domino)
+    isGameOver(game,currentPlayer)
+    game.currentPlayerI = (currentPlayer + 1)%4
+    game.currentPlayer = game.players[game.currentPlayerI]
+    if(game.test == False):
+        drawBoard(game)
+        drawHand(game,game.currentPlayer)   
+
+def makeLeftMove(game,dominoNum,currentPlayer):
+    domino = game.currentPlayer.hand[dominoNum]
+    addToNumberPlayed(game,domino)
+    game.oddMoves += 2
+    game.board[game.oddMoves] = domino
+    game.players[currentPlayer].hand.remove(domino)
+    isGameOver(game,currentPlayer)
+    game.currentPlayerI = (currentPlayer + 1)%4
+    game.currentPlayer = game.players[game.currentPlayerI]
+    if(game.test == False):
+        drawBoard(game)
+        drawHand(game,game.currentPlayer)
+
+def makeLeftMoveR(game,dominoNum,currentPlayer):
+    domino = game.currentPlayer.hand[dominoNum]
+    addToNumberPlayed(game,domino)
+    game.oddMoves += 2
+    game.board[game.oddMoves] = (domino[1],domino[0])
+    game.players[currentPlayer].hand.remove(domino)
+    isGameOver(game,currentPlayer)
+    game.currentPlayerI = (currentPlayer + 1)%4
+    game.currentPlayer = game.players[game.currentPlayerI]
+    if(game.test == False):
+        drawBoard(game)
+        drawHand(game,game.currentPlayer)
+
+#This functions checks if the game is over by checking whether the hand of
+#the current player is zero or if the board is locked. 
+
+def isGameOver(game,currentPlayer):
+    hand = game.players[currentPlayer].hand
+    board = game.board
+    if(len(hand) == 0):
+        game.winner = currentPlayer
+        game.isGameOver = True
+    elif(boardLocked(game,board)):
+        game.winner = lowestValue(game)
+        game.isGameOver = True
+
+#Checks for a locked a board. A locked board occurs when no player can
+#play on either side. The winner in this case is the player with 
+#the lowest score
+
+def boardLocked(game,board):
+    keys = board.keys()
+    for x in xrange (len(game.allNumbers)):
+        number = game.allNumbers[x]
+        if(len(number) == 7):
+            checkR,checkL = findEnds(game)
+            if(checkR[1] == x and checkL[0] == x):
+                return True
+    return False
+
+#Finds the player with lowest total number of dots on their dominos.
+      
+def lowestValue(game):
+    lowestValue = None
+    winner = None
+    for playerNum in xrange(len(game.players)):
+        player = game.players[playerNum]
+        hand = player.hand
+        sumOfHand = 0
+        for domino in hand:
+            total = sum(domino)
+            sumOfHand+=total
+        if(sumOfHand <lowestValue):
+            lowestValue = sumOfHand
+            winner = playerNum
+        elif(lowestValue == None):
+            lowestValue = sumOfHand
+            winner = playerNum
+    return winner
+
+#When a move is made, this function adds the number to the set of
+#all numbers played. 
+
+def addToNumberPlayed(game,domino):
+    if(domino[0] == 0 or domino[1] == 0):
+        game.zeroes.add(domino)
+    if(domino[0] == 1 or domino[1] == 1):
+        game.ones.add(domino)
+    if(domino[0] == 2 or domino[1] == 2):
+        game.twos.add(domino)
+    if(domino[0] == 3 or domino[1] == 3):
+        game.threes.add(domino)
+    if(domino[0] == 4 or domino[1] == 4):
+        game.fours.add(domino)
+    if(domino[0] == 5 or domino[1] == 5):
+        game.fives.add(domino)
+    if(domino[0] == 6 or domino[1] == 6):
+        game.sixes.add(domino)
+
+####################################################################################
+#View. This is where all my draw functions are######################################
+####################################################################################
+
+#Finds the image in the directory according to the value of the domino
+
+def getImage(domino):
+    x = str(domino[0])
+    y = str(domino[1])
+    image = "(" + x + "," + y + ")" +".png"
+    path = os.path.join("Dominos",image)
+    return path 
+
+def drawBackGround(game):
+    game.background = pygame.image.load("background.png").convert()
+    game.background = pygame.transform.smoothscale(game.background,(500,312))
+    game.screen.blit(game.background,(62,62))
+
+#This function draws all the hands on the board. If there are no pieces on
+#the board it animates the passing out of the dominos
+
+def drawHand(game,player):
+    if(len(game.board)==0):
+        drawInitalHand(game,player)
+    else:
+        previousPlayer = game.players[(game.currentPlayerI - 1)%4]
+        if(not game.isGameOver):
+           animateRotation(game,previousPlayer)
+           drawInitalHand(game,player)
+
+def drawInitalHand(game,player):
+        game.screen.fill(game.backgroundColor,(0,374,600,436))
+        for x in xrange(len(player.hand)):
+            if(len(game.board)==0):
+                pygame.time.wait(100)
+                pygame.display.update()
+            value = player.hand[x]
+            image = getImage(value)
+            if(player.type == "Human" or game.isGameOver):
+                domino = pygame.image.load(image).convert()
+            else:
+                domino = pygame.image.load("blank.png").convert()
+            domino = pygame.transform.smoothscale(domino,(25,50))
+            if(len(player.hand)%2 == 1):
+                start = 624/2-12.5-(len(player.hand)/2)*25
+            elif(len(player.hand)%2 == 0):
+                start = (624/2)-(len(player.hand)/2)*25
+            location = (start+(50/2)*x,374)
+            game.screen.blit(domino,location)
+        drawOtherHands(game,player)
+        drawPlayer(game,player)
+
+def drawOtherHands(game,player):
+    playerI = game.players.index(player)
+    player2 = game.players[(playerI+1)%4]
+    player3 = game.players[(playerI+2)%4]
+    player4 = game.players[(playerI+3)%4]
+    drawPlayer2Hand(game,player2)
+    drawPlayer3Hand(game,player3)
+    drawPlayer4Hand(game,player4)
+
+def drawPlayer2Hand(game,player):
+    game.screen.fill((game.backgroundColor),(562,0,624,400))
+    for x in xrange(len(player.hand)):
+        if(len(game.board) == 0):
+            pygame.time.wait(100)
+            pygame.display.update()
+        value = player.hand[x]
+        image = getImage(value)
+        if(game.isGameOver):
+            domino = pygame.image.load(image).convert()
+        else:
+            domino = pygame.image.load("blank.png").convert()
+        domino = pygame.transform.smoothscale(domino,(25,50))
+        domino = pygame.transform.rotate(domino,90)
+        if(len(player.hand)%2 == 1):
+            start = (436/2)-12.5- (len(player.hand)/2)*25
+        else:
+            start = (436/2)-(len(player.hand)/2)*25
+        location = (562,start+50/2*x)
+        game.screen.blit(domino,location)
+
+def drawPlayer3Hand(game,player):
+    game.screen.fill((game.backgroundColor),(0,0,600,62))
+    for x in xrange(len(player.hand)):
+        if(len(game.board) == 0):
+            pygame.time.wait(100)
+            pygame.display.update()
+        value = player.hand[x]
+        image = getImage(value)
+        if(game.isGameOver):
+            domino = pygame.image.load(image).convert()
+        else:
+            domino = pygame.image.load("blank.png").convert()
+        domino = pygame.transform.smoothscale(domino,(25,50))
+        if(len(player.hand)%2 == 1):
+                start = 624/2-12.5-(len(player.hand)/2)*25
+        elif(len(player.hand)%2 == 0):
+                start = (624/2)-(len(player.hand)/2)*25
+        location = (start+(50/2)*x,12)
+        game.screen.blit(domino,location)
+
+def drawPlayer4Hand(game,player):
+    game.screen.fill((game.backgroundColor),(0,0,62,400))
+    for x in xrange(len(player.hand)):
+        if(len(game.board) == 0):
+            pygame.time.wait(100)
+            pygame.display.update()
+        value = player.hand[x]
+        image = getImage(value)
+        if(game.isGameOver):
+            domino = pygame.image.load(image).convert()
+        else:
+            domino = pygame.image.load("blank.png").convert()
+        domino = pygame.transform.smoothscale(domino,(25,50))
+        domino = pygame.transform.rotate(domino,90)
+        if(len(player.hand)%2 == 1):
+            start = (436/2)-12.5- (len(player.hand)/2)*25
+        else:
+            start = (436/2)-(len(player.hand)/2)*25
+        location = (12,start+50/2*x)
+        game.screen.blit(domino,location)
+
+#This functions rotates the hands around the board after a move
+#is made.It makes every domino into a struct and moves their location
+#by a set amount.
+
+def animateRotation(game,player):
+    game.animation = True
+    drawPlayer(game,game.currentPlayer)
+    game.finishedRotate = False
+    player2 = game.players[(game.currentPlayerI)%4]
+    player3 = game.players[(game.currentPlayerI+1)%4]
+    player4 = game.players[(game.currentPlayerI+2)%4]
+    createAnimatedHands(player,player2,player3,player4)
+    game.movement = 6.25
+    while True:
+        animatePlayer1(game,player)
+        animatePlayer2(game,player2)
+        animatePlayer3(game,player3)
+        animatePlayer4(game,player4)
+        pygame.display.update()
+        pygame.time.wait(35)
+        if(game.finishedRotate == True):
+            game.animation = False
+            break
+
+def createAnimatedHands(player,player2,player3,player4):
+    createAnimatedHand1(player)
+    createAnimatedHand2(player2)
+    createAnimatedHand3(player3)
+    createAnimatedHand4(player4)
+
+def createAnimatedHand1(player):
+    class Struct:pass
+    player.animatedHand = []
+    for x in xrange(len(player.hand)):
+        value = player.hand[x]
+        if(player.type == "Human"):
+                image = getImage(value)
+                dominoI = pygame.image.load(image).convert()
+        else:
+            dominoI = pygame.image.load("blank.png").convert()
+        dominoI = pygame.transform.smoothscale(dominoI,(25,50))
+        if(len(player.hand)%2 == 1):
+            start = 624/2-12.5-(len(player.hand)/2)*25
+        elif(len(player.hand)%2 == 0):
+            start = (624/2)-(len(player.hand)/2)*25
+        location = (start+int((50/2))*x,374)
+        domino = Struct()
+        domino.location = location
+        domino.image = dominoI
+        player.animatedHand.append(domino)
+
+def createAnimatedHand2(player):
+    class Struct:pass
+    player.animatedHand = []
+    for x in xrange(len(player.hand)):
+        dominoI = pygame.image.load("blank.png").convert()
+        dominoI = pygame.transform.smoothscale(dominoI,(25,50))
+        dominoI = pygame.transform.rotate(dominoI,90)
+        if(len(player.hand)%2 == 1):
+            start = (436/2)-12.5-(len(player.hand)/2)*25
+        else:
+            start = (436/2)-(len(player.hand)/2)*25
+        location = (562,start+int(50/2)*x)
+        domino = Struct()
+        domino.location = location
+        domino.image = dominoI
+        player.animatedHand.append(domino)
+
+def createAnimatedHand3(player):
+    class Struct:pass
+    player.animatedHand = []
+    for x in xrange(len(player.hand)):
+        dominoI = pygame.image.load("blank.png").convert()
+        dominoI = pygame.transform.smoothscale(dominoI,(25,50))
+        if(len(player.hand)%2 == 1):
+                start = 624/2-12.5-(len(player.hand)/2)*25
+        elif(len(player.hand)%2 == 0):
+                start = (624/2)-(len(player.hand)/2)*25
+        location = (start+(50/2)*x,12)
+        domino = Struct()
+        domino.location = location
+        domino.image = dominoI
+        player.animatedHand.append(domino)
+
+def createAnimatedHand4(player):
+    class Struct: pass
+    player.animatedHand = []
+    for x in xrange(len(player.hand)):
+        dominoI = pygame.image.load("blank.png").convert()
+        dominoI = pygame.transform.smoothscale(dominoI,(25,50))
+        dominoI = pygame.transform.rotate(dominoI,90)
+        if(len(player.hand)%2 == 1):
+            start = (436/2)-12.5- (len(player.hand)/2)*25
+        else:
+            start = (436/2)-(len(player.hand)/2)*25
+        location = (12,start+50/2*x)
+        domino = Struct()
+        domino.image = dominoI
+        domino.location = location
+        player.animatedHand.append(domino)
+
+def animatePlayer1(game,player):
+    for x in xrange(len(player.animatedHand)):
+        domino = player.animatedHand[x]
+        if(domino.location[0] > 62):
+            animatePlayer1Left(game,player,domino)
+        else:
+            animatePlayer1Up(game,player,domino)
+        game.screen.blit(domino.image,domino.location)
+
+def animatePlayer1Left(game,player,domino):
+    location = (domino.location[0],domino.location[1],
+               domino.location[0]+25,domino.location[1]+50)
+    game.screen.fill(game.backgroundColor,location)
+    newLocation2 = domino.location[1]
+    newLocation1 = domino.location[0] - game.movement
+    domino.location = (newLocation1,newLocation2)
+
+def animatePlayer1Up(game,player,domino):
+    dominoI = pygame.image.load("blank.png").convert()
+    dominoI = pygame.transform.smoothscale(dominoI,(25,50))
+    dominoI = pygame.transform.rotate(dominoI,90)
+    domino.image = dominoI
+    if(domino.location[0]+ 50 >62):
+        location = (domino.location[0],domino.location[1],
+                   domino.location[0]+25,domino.location[1]+50)
+        game.screen.fill(game.backgroundColor,location)
+        newLocation2 = 350
+    else:  
+        location = (domino.location[0],domino.location[1],
+                    domino.location[0]+38,domino.location[1]-25)
+        game.screen.fill(game.backgroundColor,location)
+        newLocation2 = domino.location[1] - game.movement
+    newLocation1 = 12
+    domino.location = (newLocation1,newLocation2)
+    if(len(player.hand)%2 == 1):
+        if(domino.location[1] < (436/2)-12.5-(len(player.hand)/2)*25):
+            game.finishedRotate = True
+    elif(len(player.hand)%2 == 0):
+        if(domino.location[1] <= (436/2)-(len(player.hand)/2)*25):
+            game.finishedRotate = True
+
+def animatePlayer2(game,player):
+    for x in xrange(len(player.animatedHand)-1,-1,-1):
+        domino = player.animatedHand[x]
+        if(domino.location[1] < 350):
+            animatePlayer2Down(game,player,domino)
+        else:
+             animatePlayer2Left(game,player,domino,x)
+    for domino in player.animatedHand:
+        game.screen.blit(domino.image,domino.location)
+
+def animatePlayer2Down(game,player,domino):
+        location = (domino.location[0],domino.location[1],
+                    domino.location[0]+50,domino.location[1]+25)
+        game.screen.fill(game.backgroundColor,location)
+        newLocation1 = domino.location[0]
+        newLocation2 = domino.location[1] + game.movement
+        domino.location = (newLocation1,newLocation2)
+
+def animatePlayer2Left(game,player,domino,x):
+    value = player.hand[x]
+    image = getImage(value)
+    if(player.type == "Human"):
+        dominoI = pygame.image.load(image).convert()
+    else:
+        dominoI = pygame.image.load("blank.png").convert()
+    dominoI = pygame.transform.smoothscale(dominoI,(25,50))
+    domino.image = dominoI
+    if(domino.location[1]-25>350):
+        location = (domino.location[0],domino.location[1],
+                    domino.location[0]+50,domino.location[1]+25)
+        game.screen.fill(game.backgroundColor,location)
+        newLocation1 = 562
+    else:
+        location = (domino.location[0],domino.location[1],
+                    domino.location[0]-25,domino.location[1]+38)
+        game.screen.fill(game.backgroundColor,location)
+        newLocation1 = domino.location[0] - game.movement
+    newLocation2 = 374
+    domino.location = (newLocation1,newLocation2)
+
+def animatePlayer3(game,player):
+    for x in xrange(len(player.animatedHand)-1,-1,-1):
+        domino = player.animatedHand[x]
+        if(domino.location[0] < 537):
+            animatePlayer3Right(game,player,domino)
+        else:
+           animatePlayer3Down(game,player,domino)
+    for domino in player.animatedHand:
+        game.screen.blit(domino.image,domino.location)
+
+def animatePlayer3Right(game,player,domino):
+    location = (domino.location[0], domino.location[1], 
+        domino.location[0]+25, domino.location[1]+38)
+    game.screen.fill(game.backgroundColor,location)
+    newLocation1 = domino.location[0] + game.movement
+    newLocation2 = domino.location[1]
+    domino.location = (newLocation1,newLocation2)
+
+def animatePlayer3Down(game,player,domino):
+    dominoI = pygame.image.load("blank.png").convert()
+    dominoI = pygame.transform.smoothscale(dominoI,(25,50))
+    dominoI = pygame.transform.rotate(dominoI,90)
+    domino.image = dominoI
+    if(domino.location[0]-25<537):
+        location = (domino.location[0], domino.location[1], 
+                    domino.location[0]+25, domino.location[1]+38)
+        game.screen.fill(game.backgroundColor,location)
+        newLocation2 = 62
+    else:
+        location = (domino.location[0],domino.location[1],
+                    domino.location[0]+38,domino.location[1]-25)
+        game.screen.fill(game.backgroundColor,location)
+        newLocation2 = domino.location[1] + game.movement
+    newLocation1 = 562
+    domino.location = (newLocation1,newLocation2)
+
+def animatePlayer4(game,player):
+    for x in xrange(len(player.animatedHand)):
+        domino = player.animatedHand[x]
+        if(domino.location[1] >62):
+            animatePlayer4Up(game,player,domino)
+        else:
+            animatePlayer4Right(game,player,domino)
+    for domino in player.animatedHand:
+        game.screen.blit(domino.image,domino.location)
+
+def animatePlayer4Up(game,player,domino):
+    location = (domino.location[0],domino.location[1],
+        domino.location[0]+38,domino.location[1]-25)
+    game.screen.fill(game.backgroundColor,location)
+    newLocation1 = domino.location[0]
+    newLocation2 = domino.location[1] - game.movement
+    domino.location = (newLocation1,newLocation2)
+
+def animatePlayer4Right(game,player,domino):
+    dominoI = pygame.image.load("blank.png").convert()
+    dominoI = pygame.transform.smoothscale(dominoI,(25,50))
+    domino.image = dominoI
+    if(domino.location[1]+25>62):
+        location = (domino.location[0],domino.location[1],
+            domino.location[0]+38,domino.location[1]-15)
+        game.screen.fill(game.backgroundColor,location)
+        newLocation1 = 62
+    else:
+        location = (domino.location[0],domino.location[1],
+            domino.location[0]+25,domino.location[1]+38)
+        game.screen.fill(game.backgroundColor,location)
+        newLocation1 = domino.location[0] + game.movement
+    newLocation2 = 12
+    domino.location = (newLocation1,newLocation2)
+
+#Draws the current player's number
+
+def drawPlayer(game,player):
+    if(game.animation == True or game.isPassed == True):
+        game.screen.fill((game.backgroundColor),(0,375,200,436))
+    else:
+        font = pygame.font.SysFont("helvetica",35)
+        playerI = game.players.index(player)
+        text = font.render("Player "+str(playerI+1),True,pygame.Color("black"))
+        game.screen.blit(text,(50,370))
+        pygame.display.update()
+
+#This draws the board. The left side is drawn left, down and backRight 
+#and vice-versa for the right(up,backLeft). The getCoords functions work
+#by determining whether the last piece played is upright or rotated.
+
+def drawBoard(game):
+    keys = sorted(game.board.keys())
+    game.upRightOdd,game.upRightEven = 0,0 
+    game.rotatedOdd,game.rotatedEven = 0,0
+    game.rotatedUp,game.upRightUp = 0,0
+    game.rotatedBackLeft, game.upRightBackLeft = 0,0
+    game.rotatedDown, game.upRightDown = 0,0
+    game.rotatedBR,game.upRightBR = 0,0 
+    for x in keys:
+        if(x %2 == 1):
+            drawOdd(game,x)
+        else:
+            drawEven(game,x)
+    pygame.display.update()
+
+def drawOdd(game,x):
+    if((game.upRightOdd == 3 or game.rotatedOdd == 4 or
+        game.upRightOdd + game.rotatedOdd == 6) and
+        ((game.rotatedDown < 2) and (game.upRightDown < 2) and
+        (game.rotatedDown + game.upRightDown < 4))):
+        drawDown(game,x)
+    elif(game.rotatedDown == 2 or game.upRightDown == 2 or
+        game.rotatedDown + game.upRightDown == 4):
+        drawBackRight(game,x)
+    else:
+        drawLeft(game,x)
+
+def drawEven(game,x):
+    if((game.upRightEven == 3 or game.rotatedEven == 4 or
+        game.upRightEven + game.rotatedEven == 5) and
+        (game.rotatedUp < 3 and game.upRightUp < 2 and
+        game.rotatedUp + game.upRightUp < 3)):
+        drawUp(game,x)
+    elif(game.rotatedUp == 3 or game.upRightUp == 2 or
+        game.rotatedUp + game.upRightUp == 3):
+        drawBackLeft(game,x)
+    else:
+        drawRight(game,x)
+
+def drawDown(game,x):
+    domino = game.board[x]
+    image = getImage(domino)
+    left,top = getCoordsLeft(game)
+    try:
+        dominoI = pygame.image.load(image).convert()
+        dominoI = pygame.transform.smoothscale(dominoI,(25,50))
+        if(domino[0] == domino[1]):
+            game.rotatedDown += 1
+            game.lastPieceD = "rotated"
+            dominoI = pygame.transform.rotate(dominoI,90)
+            game.screen.blit(dominoI,
+            (left-25/2,top+50/2+game.rotatedDown*50/2+game.upRightDown*100/2))
+        elif(domino[0] != domino[1]):
+            dominoI = pygame.transform.rotate(dominoI,180)
+            game.lastPieceD = "upRight"
+            game.upRightDown += 1
+            game.screen.blit(dominoI,(left,
+            top+game.rotatedDown*50/2+game.upRightDown*100/2))
+    except:
+        image = getImage((domino[1],domino[0]))
+        dominoI = pygame.image.load(image).convert()
+        dominoI = pygame.transform.smoothscale(dominoI,(25,50))
+        game.upRightDown += 1
+        game.lastPieceD = "upRight"
+        game.screen.blit(dominoI,
+        (left,top+game.rotatedDown*50/2+game.upRightDown*100/2))
+    pygame.display.update()
+
+def getCoordsLeft(game):
+    if(game.lastPieceOdd =="upRight"):
+        left = 624/2 + 12.5 - 50/2*game.upRightOdd - 100/2*game.rotatedOdd
+        top = 386/2
+    else:
+        left = 624/2 +12.5 - 50/2*game.upRightOdd - 100/2*game.rotatedOdd
+        top = 361/2
+    return left,top
+
+def drawBackRight(game,x):
+    domino = game.board[x]
+    image = getImage(domino)
+    left,top = getCoordsDown(game)
+    try:
+        dominoI = pygame.image.load(image).convert()
+        dominoI = pygame.transform.smoothscale(dominoI,(25,50))
+        if(domino[0] == domino[1]):
+            game.upRightBR += 1
+            game.screen.blit(dominoI,
+            (left+50/2*game.upRightBR+100/2*game.rotatedBR,top+25/2))
+        elif(domino[0] != domino[1]):
+            dominoI = pygame.transform.rotate(dominoI,270)
+            game.rotatedBR += 1
+            game.screen.blit(dominoI,
+            (left-50/2+50/2*game.upRightBR+100/2*game.rotatedBR,top+50/2))
+    except:
+        image = getImage((domino[1],domino[0]))
+        dominoI = pygame.image.load(image).convert()
+        dominoI = pygame.transform.smoothscale(dominoI,(25,50))
+        dominoI = pygame.transform.rotate(dominoI,90)
+        game.rotatedBR+= 1
+        game.screen.blit(dominoI,
+        (left-50/2+50/2*game.upRightBR+100/2*game.rotatedBR,top+50/2))
+
+def getCoordsDown(game):
+    left,top = getCoordsLeft(game)
+    if(game.lastPieceD == "rotated"):
+        left = left + 25/2
+        top = top+game.rotatedDown*50/2+game.upRightDown*100/2 
+    else:
+        left = left
+        top = top+game.rotatedDown*50/2+game.upRightDown*100/2
+    return left,top
+
+def drawLeft(game,x):
+    domino = game.board[x]
+    image = getImage(domino)
+    try:
+        dominoI = pygame.image.load(image).convert()
+        dominoI = pygame.transform.smoothscale(dominoI,(25,50))
+        if(domino[0] == domino[1]):
+            game.upRightOdd += 1
+            game.lastPieceOdd = "upRight"
+            game.screen.blit(dominoI,
+            (624/2+12.5-50/2*game.upRightOdd - 100/2*game.rotatedOdd,386/2))
+        elif(domino[0] != domino[1]):
+            dominoI = pygame.transform.rotate(dominoI,90)
+            game.rotatedOdd +=1
+            game.lastPieceOdd = "rotated"
+            game.screen.blit(dominoI,
+            (624/2 +12.5-50/2*game.upRightOdd - 100/2*game.rotatedOdd,411/2))
+    except:
+        image = getImage((domino[1],domino[0]))
+        dominoI = pygame.image.load(image).convert()
+        dominoI = pygame.transform.smoothscale(dominoI,(25,50))
+        dominoI = pygame.transform.rotate(dominoI,270)
+        game.rotatedOdd += 1
+        game.lastPieceOdd = "rotated"
+        game.screen.blit(dominoI,
+        (624/2 +12.5-50/2*game.upRightOdd - 100/2*game.rotatedOdd,411/2))
+    pygame.display.update()
+    
+def drawUp(game,x):
+    domino = game.board[x]
+    image = getImage(domino)
+    left,top = getCoordsRight(game)
+    try:
+        dominoI = pygame.image.load(image).convert()
+        dominoI = pygame.transform.smoothscale(dominoI,(25,50))
+        if(domino[0] == domino[1]):
+            game.rotatedUp += 1
+            dominoI = pygame.transform.rotate(dominoI,270)
+            game.lastUpP = "rotated"
+            game.screen.blit(dominoI,
+            (left-25/2,top- 50/2*game.rotatedUp - 100/2*game.upRightUp))
+        elif(domino[0] != domino[1]):
+            dominoI = pygame.transform.rotate(dominoI,180)
+            game.upRightUp += 1
+            game.lastUpP = "upRight"
+            game.screen.blit(dominoI,
+            (left,top - 50/2*game.rotatedUp - 100/2*game.upRightUp))
+    except:
+        image = getImage((domino[1],domino[0]))
+        dominoI = pygame.image.load(image).convert()
+        dominoI = pygame.transform.smoothscale(dominoI,(25,50))
+        game.upRightUp += 1
+        game.lastUpP = "upRight"
+        game.screen.blit(dominoI,
+        (left,top - 50/2*game.rotatedUp - 100/2*game.upRightUp))
+    pygame.display.update()
+
+def getCoordsRight(game):
+    if(game.lastPieceEven == "upRight"):
+        left = 549/2+50/2*game.upRightEven+50/2+100/2*game.rotatedEven
+        top = 411/2 - 12
+    else:
+        left = 549/2+50/2+50/2*game.upRightEven+100/2*game.rotatedEven
+        top = 411/2
+    return left,top
+
+def drawBackLeft(game,x):
+    domino = game.board[x]
+    image = getImage(domino)
+    left,top = getCoordsUp(game)
+    try:
+        dominoI = pygame.image.load(image).convert()
+        dominoI = pygame.transform.smoothscale(dominoI,(25,50))
+        if(domino[0] == domino[1]):
+            game.upRightBackLeft += 1
+            game.lastPBackLeft = "upRight"
+            game.screen.blit(dominoI,
+            (left-50/2*game.upRightBackLeft-50*game.rotatedBackLeft,top-25/2))
+        elif(domino[0] != domino[1]):
+            dominoI = pygame.transform.rotate(dominoI,270)
+            game.rotatedBackLeft += 1
+            game.screen.blit(dominoI,
+            (left-50/2*game.upRightBackLeft-100/2*game.rotatedBackLeft,top))
+    except:
+        image = getImage((domino[1],domino[0]))
+        dominoI = pygame.image.load(image).convert()
+        dominoI = pygame.transform.smoothscale(dominoI,(25,50))
+        dominoI = pygame.transform.rotate(dominoI,90)
+        game.rotatedBackLeft += 1
+        game.screen.blit(dominoI,
+        (left - 50/2*game.upRightBackLeft - 100/2*game.rotatedBackLeft,top))
+    pygame.display.update()
+
+def getCoordsUp(game):
+    left,top = getCoordsRight(game)
+    if(game.lastUpP == "upRight"):
+        left = left
+        top = top - 50/2*game.rotatedUp - 100/2*game.upRightUp
+    else:
+        left = left -25/2
+        top = top - 50/2*game.rotatedUp - 100/2*game.upRightUp
+    return left,top 
+    
+def drawRight(game,x):
+    domino = game.board[x]
+    image = getImage(domino)
+    try:
+        dominoI = pygame.image.load(image).convert()
+        dominoI = pygame.transform.smoothscale(dominoI,(25,50))
+        if(domino[0] == domino[1]):
+            game.upRightEven += 1
+            game.lastPieceEven = "upRight"
+            game.screen.blit(dominoI,
+            (549/2+50/2*game.upRightEven+50/2+100/2*game.rotatedEven,386/2))
+        elif(domino[0] != domino[1]):
+            dominoI = pygame.transform.rotate(dominoI,90)
+            game.rotatedEven += 1
+            game.lastPieceEven = "rotated"
+            game.screen.blit(dominoI,
+            (549/2+50/2*game.upRightEven+100/2*game.rotatedEven,411/2))
+    except:
+        image = getImage((domino[1],domino[0]))
+        dominoI = pygame.image.load(image).convert()
+        dominoI = pygame.transform.smoothscale(dominoI,(25,50))
+        dominoI = pygame.transform.rotate(dominoI,270)
+        game.rotatedEven += 1
+        game.lastPieceEven = "rotated"
+        game.screen.blit(dominoI,
+        (549/2+50/2*game.upRightEven+100/2*game.rotatedEven,411/2))
+    pygame.display.update()
+
+#Finally this function draws the pass button that comes up
+#when you are unable to make a move.
+
+def drawPassed(game):
+    game.isPassed = True
+    drawPlayer(game,game.currentPlayer)
+    image = pygame.image.load("passbutton.png")
+    image = pygame.transform.scale(image,(214/2,55))
+    game.screen.blit(image,(62,375))
+    pygame.display.update()
+    while game.isPassed:
+        event = pygame.event.wait()
+        if event.type == QUIT:
+                exit()
+        if event.type == MOUSEBUTTONDOWN:
+            x,y = pygame.mouse.get_pos()
+            if(x>=62 and x<=214+62 and y >=380 and y<=380+85):
+                game.screen.fill((game.backgroundColor),(70,385,166,416))
+                game.isPassed = False
+
+main()
